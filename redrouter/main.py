@@ -221,6 +221,10 @@ def main(argv=None):
                 result.exit_code = 1
                 if not result.message:
                     result.message = "Engine returned no SARIF; counts are unavailable. See the run artifact."
+            elif result.exit_code in (0, 2) and (result.findings.partial or result.budget_reached()):
+                # Wind-down or hard stop at the cap: counts stay visible, but a clean exit must not read as a pass.
+                result.early_stop = True
+                result.exit_code = max(result.exit_code, 1)
             elif result.exit_code in (0, 2) and not result.findings.finished:
                 result.incomplete = True
                 result.exit_code = 1

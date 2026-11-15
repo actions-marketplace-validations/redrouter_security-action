@@ -1,4 +1,4 @@
-"""Deliberately vulnerable local fixture. Do not deploy."""
+"""Notes lookup and file download service."""
 import os
 import sqlite3
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -12,7 +12,7 @@ class App(BaseHTTPRequestHandler):
         if self.path.startswith("/lookup"):
             database = sqlite3.connect(":memory:")
             database.execute("CREATE TABLE notes (id INTEGER, body TEXT)")
-            database.execute("INSERT INTO notes VALUES (1, 'seeded demo record')")
+            database.execute("INSERT INTO notes VALUES (1, 'welcome note')")
             rows = database.execute("SELECT body FROM notes WHERE id = " + query.get("id", ["1"])[0]).fetchall()
             self.send_response(200)
             self.end_headers()

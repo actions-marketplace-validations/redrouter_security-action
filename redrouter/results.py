@@ -18,6 +18,7 @@ class Result:
     input_error: bool = False
     not_started: bool = False
     incomplete: bool = False
+    early_stop: bool = False
     scope_name: str = "Not checked"
     targets: list = field(default_factory=list)
     budget: float = 3
@@ -42,17 +43,25 @@ class Result:
             return "Dry run: preflight passed; engine not run."
         if self.incomplete:
             return "Incomplete: scan stopped before finishing; results are partial."
+        if self.stopped_early():
+            reason = "budget cap reached before the scan finished" if self.budget_reached() else "the engine reported partial coverage"
+            so_far = (f"Findings so far meet or exceed {self.fail_on}." if self.exit_code == 2
+                      else f"No findings at or above {self.fail_on} so far.")
+            return f"Incomplete: {reason}. {so_far}"
         if self.exit_code == 1:
             return "Error: scan did not complete."
-        budget_reached = (report_counts(self) and self.findings.estimated_spend != "" and
-                          Decimal(self.findings.estimated_spend) >= Decimal(str(self.budget)) * Decimal("0.9"))
         if self.exit_code == 2:
-            status = f"Fail: findings meet or exceed {self.fail_on}."
-        else:
-            status = f"No findings at or above {self.fail_on}." if budget_reached else f"Pass: no findings at or above {self.fail_on}."
-        if budget_reached:
-            status += " The budget cap was reached, so the scan is incomplete."
-        return status
+            return f"Fail: findings meet or exceed {self.fail_on}."
+        return f"Pass: no findings at or above {self.fail_on}."
+
+    def budget_reached(self):
+        # The engine winds down at 90% of the cap.
+        return (self.findings.estimated_spend != "" and
+                Decimal(self.findings.estimated_spend) >= Decimal(str(self.budget)) * Decimal("0.9"))
+
+    def stopped_early(self):
+        """The engine exited normally but did not finish the assessment."""
+        return report_counts(self) and not self.incomplete and (self.findings.partial or self.budget_reached())
 
     def outputs(self):
         return {"exit-code": str(self.exit_code), "skipped": str(self.skipped).lower(),
@@ -73,7 +82,7 @@ def table(result):
 
 
 def report_counts(result):
-    return result.complete and result.findings.finished and result.exit_code in (0, 2)
+    return result.complete and (result.early_stop or (result.findings.finished and result.exit_code in (0, 2)))
 
 
 def budget_line(result):

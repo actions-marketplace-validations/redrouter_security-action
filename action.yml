@@ -57,7 +57,7 @@ inputs:
     default: 'false'
 outputs:
   exit-code:
-    description: 0 clean or skipped, 1 error or refusal, 2 threshold findings
+    description: 0 clean or skipped, 1 error, refusal or incomplete scan, 2 threshold findings
     value: ${{ steps.scan.outputs.exit-code }}
   skipped:
     description: Whether a fork pull request was skipped

@@ -50,7 +50,7 @@ def serve(directory, guarded):
                 "poc_description": "Request id=0 OR 1=1 and observe the seeded record.",
                 "poc_script_code": command,
                 "remediation_steps": "Bind the identifier as a SQL parameter.",
-                "evidence": "The scripted request returns seeded demo record. This is a test fixture, not an autonomous assessment.",
+                "evidence": "The scripted request returns the stored note. This is a test fixture, not an autonomous assessment.",
                 "assumptions": "The deliberately vulnerable sample is running on the isolated CI runner.",
                 "counterevidence": "Only synthetic data exists; no real service or user data is assessed.",
                 "confidence": "high", "severity_change_conditions": "Parameter binding would remove this fixture vulnerability.",

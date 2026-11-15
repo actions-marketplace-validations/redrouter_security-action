@@ -42,18 +42,25 @@ class ActionTests(unittest.TestCase):
         self.assertEqual(outputs["refusal"], "prices-unavailable")
         self.no_model_requests()
 
-    def test_budget_wind_down_wording(self):
+    def test_incomplete_scan_wording(self):
         result = results.Result(exit_code=0, complete=True, budget=0.9,
                                 findings=Findings(finished=True, estimated_spend="0.82631166"))
-        for text in (results.summary(result), results.comment(result), results.slack(result)["text"]):
-            self.assertIn("No findings at or above high. The budget cap was reached, so the scan is incomplete.", text)
+        self.assertTrue(result.stopped_early())
+        result.early_stop, result.exit_code = True, 1  # as main() does
+        for text in (results.summary(result), results.comment(result).split("\n", 1)[1], results.slack(result)["text"]):
+            self.assertIn("Incomplete: budget cap reached before the scan finished. No findings at or above high so far.", text.splitlines()[0])
             self.assertIn("Spent $0.83 of $0.90.", text)
-            self.assertNotIn("Pass:", text)
-        self.assertEqual(result.outputs()["exit-code"], "0")
-        result.findings.estimated_spend = "0.81"
-        self.assertIn("scan is incomplete", result.status())
-        result.findings.estimated_spend = "0.809"
+            self.assertNotIn("Pass", text)
+        self.assertEqual(result.outputs()["exit-code"], "1")
+        result.exit_code = 2
+        self.assertEqual(result.status(), "Incomplete: budget cap reached before the scan finished. Findings so far meet or exceed high.")
+        result = results.Result(exit_code=0, complete=True, budget=0.9, findings=Findings(finished=True, estimated_spend="0.809"))
         self.assertEqual(result.status(), "Pass: no findings at or above high.")
+        result.findings.partial = True
+        self.assertTrue(result.status().startswith("Incomplete: the engine reported partial coverage."))
+        # Hard stop at the cap: the engine's run record is not "completed", counts are still shown.
+        result = results.Result(exit_code=2, complete=True, early_stop=True, budget=1, findings=Findings(estimated_spend="1.003", partial=True))
+        self.assertIn("| Critical |", results.summary(result))
 
     def test_loopback_instructions(self):
         example = (ROOT / "README.md").read_text().split("```yaml\n", 1)[1].split("```", 1)[0]

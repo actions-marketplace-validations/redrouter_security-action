@@ -141,4 +141,10 @@ class Strix:
                 spend = Decimal(str(value))
                 if spend.is_finite() and spend >= 0:
                     findings.estimated_spend = format(spend, "f")
+        coverage = path.with_name("coverage.json")
+        if coverage.exists():
+            try:
+                findings.partial = json.loads(coverage.read_text())["completeness"]["complete"] is False
+            except (ValueError, KeyError, TypeError):
+                findings.partial = True
         return findings

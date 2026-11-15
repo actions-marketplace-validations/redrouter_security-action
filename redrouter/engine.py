@@ -12,6 +12,7 @@ class Findings:
     sarif: Path | None = None
     estimated_spend: str = ""
     finished: bool = False
+    partial: bool = False  # engine's own coverage record says the assessment is incomplete
 
 
 class Engine(Protocol):

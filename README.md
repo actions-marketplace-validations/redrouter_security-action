@@ -94,7 +94,9 @@ Set test-account variables as `env` on the Action step from repository secrets; 
 
 Preflight checks scope, exclusions, API-spec servers and prices. Rate/concurrency limits are instructions. Public comments/Slack omit details; artifacts expire after seven days.
 
-Outputs: `exit-code` (0 completed/skipped/dry-run, 1 error/refusal, 2 findings), `skipped`, `refusal`, `sarif-path`, `findings-high`, `findings-total`, `estimated-spend-usd`.
+Outputs: `exit-code` (0 completed/skipped/dry-run, 1 error/refusal/incomplete scan, 2 findings), `skipped`, `refusal`, `sarif-path`, `findings-high`, `findings-total`, `estimated-spend-usd`.
+
+A scan that stops at the budget cap, or that the engine records as partial, is reported as `Incomplete` in the first line of the summary and PR comment and exits 1 (2 if findings already meet `fail-on`). Raise `max-budget` or narrow `targets` to finish.
 
 2026-11-15, GitHub-hosted `ubuntu-latest`, Strix 1.7.1, `red-cyber-1`: private repository, code only, $0.83 of $0.90, about 13 minutes; repository plus a web app started on the runner, $0.97 of $1.00, about 13 minutes, workflow written by a coding agent from the setup prompt, budget cap lowered by hand to $1.
 Both reached budget-cap wind-down; no findings at or above high, both incomplete.
@@ -132,3 +134,4 @@ uv pip install PyYAML==6.0.3
 ```
 
 Default demo: localhost, Docker-free. Real modes download dependencies.
+`sample-app/` exists for these demos; never deploy it.
