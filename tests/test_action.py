@@ -9,7 +9,7 @@ from demo.cases import ROOT, invoke, prepare, scope_fixture
 from demo.mock import server
 from redrouter import results
 from redrouter.engine import Findings
-from redrouter.scope import CODES, Refusal, Scope, check_targets
+from redrouter.scope import CODES, Refusal, Scope, check_targets, parse_scope
 
 
 class ActionTests(unittest.TestCase):
@@ -54,6 +54,15 @@ class ActionTests(unittest.TestCase):
         self.assertIn("scan is incomplete", result.status())
         result.findings.estimated_spend = "0.809"
         self.assertEqual(result.status(), "Pass: no findings at or above high.")
+
+    def test_loopback_instructions(self):
+        example = (ROOT / "README.md").read_text().split("```yaml\n", 1)[1].split("```", 1)[0]
+        scope = parse_scope(example)
+        self.assertIn("host.docker.internal with the same scheme, port and path", scope.instructions())
+        for host in ("localhost", "127.0.0.2", "[::1]", "0.0.0.0", "outside.test"):
+            with self.subTest(host=host):
+                scope.data["in_scope"] = [{"type": "url", "value": f"http://{host}:8080/app"}]
+                self.assertEqual("host.docker.internal" in scope.instructions(), host != "outside.test")
 
     def test_pr_head_cannot_widen_base_scope(self):
         env = prepare(self.directory, self.mock.origin)

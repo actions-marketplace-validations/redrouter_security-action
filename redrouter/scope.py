@@ -116,7 +116,9 @@ def _entry(value, exclusion=False):
         elif kind == "cidr":
             ipaddress.ip_network(text, strict=True)
     except (ValueError, UnicodeError) as exc:
-        raise Refusal("scope-missing", f"Invalid {kind} scope entry.") from exc
+        hint = {"cidr": " Use a network address with no host bits.",
+                "url": " Use a valid ASCII host and a path without dot segments, repeated slashes or encoded dots/separators."}.get(kind, "")
+        raise Refusal("scope-missing", f"Invalid {kind} scope entry." + hint) from exc
 
 
 def _timestamp(value):
@@ -160,6 +162,17 @@ class Scope:
     def instructions(self):
         lines = [f"Scope for this run ({self.name}). Follow it exactly.", "", "In scope:"]
         lines += [f"- {e['type']}: {e['value']}" for e in self.data["in_scope"]]
+        for entry in self.data["in_scope"]:
+            if entry["type"] != "url":
+                continue
+            name = urlsplit(entry["value"]).hostname
+            try:
+                loopback = ipaddress.ip_address(name).is_loopback
+            except ValueError:
+                loopback = name == "localhost"
+            if loopback or name == "0.0.0.0":
+                lines += ["", "Inside the sandbox, in-scope loopback URLs (including 0.0.0.0) use host.docker.internal with the same scheme, port and path; these are the same in-scope apps, with only the listed URL scopes allowed and all exclusions still applying."]
+                break
         lines += ["", "Out of scope:"]
         for e in self.data.get("out_of_scope", []):
             value = e["value"] if e["type"] == "text" else f"{e['type']}: {e['value']}"
@@ -278,7 +291,7 @@ def _matches(entry, target, workspace, repository, exclusion=False):
 
 def check_targets(scope: Scope, targets: list[str], workspace: Path, repository: str):
     if not targets or any(any(c.isspace() or ord(c) < 32 for c in t) or not scope.allows(t, workspace, repository) for t in targets):
-        raise Refusal("target-out-of-scope", "List every target in scope and keep local paths inside the workspace.")
+        raise Refusal("target-out-of-scope", "A target is outside scope or covered by an exclusion; list every target in scope and keep local paths inside the workspace.")
     files = set()
     for target in targets:
         path = local_path(target, workspace)

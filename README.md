@@ -1,8 +1,8 @@
 # Scoped security scans on every pull request.
 
-Runs a pinned open-source scanning engine on your runner with your RedRouter key. Scope is checked before the run and sent to the agent as instructions.
+Runs a pinned open-source engine on your runner with your RedRouter key. Scope is checked before scanning and sent as instructions.
 
-Save `.github/scope.yaml`, replacing `acme/shop` and exclusions with your authorized targets. No secrets or account details. Merge scope to the PR's base branch before the first scan: PR scans read that commit's scope.
+Save `.github/scope.yaml` with authorized targets and exclusions; no secrets. Merge it to the PR's base branch before the first scan: PR scans read that commit's scope.
 
 ```yaml
 schema: redrouter.scope/v1
@@ -36,12 +36,12 @@ limits:
   max_turns: 150
 ```
 
-`status`: `draft|active|revoked`; only active runs. Target `type`: `repository|url|domain|ip|cidr`; exclusions also accept `text` (instructions only). Limits accept only the four keys shown: positive numbers, with integer concurrency and turns. Budget/turn inputs cannot raise scope limits.
+`status`: `draft|active|revoked`; only active runs. Target `type`: `repository|url|domain|ip|cidr`; exclusions also accept `text` (instructions only). Limits: four keys shown, positive numbers, integer concurrency/turns. Inputs cannot raise scope limits.
 
 Add repository secret `REDROUTER_API_KEY` in Settings > Secrets and variables > Actions. Save `.github/workflows/security.yml`:
 
-Replace the example Node install/start commands below with your app's commands.
-Start in the background on `0.0.0.0:8080`, then wait for readiness before the Action.
+Replace the Node commands and use an existing readiness path.
+Start on `0.0.0.0:8080` in the background; wait for readiness before scanning.
 
 ```yaml
 name: Security
@@ -60,7 +60,7 @@ jobs:
         run: |
           npm ci
           npm start -- --host 0.0.0.0 --port 8080 > "$RUNNER_TEMP/app.log" 2>&1 &
-          curl --fail --retry 30 --retry-all-errors --retry-delay 1 --max-time 2 http://localhost:8080
+          curl -sS -o /dev/null --retry 30 --retry-all-errors --retry-delay 1 --max-time 2 http://localhost:8080
       - uses: redrouter/security-action@v0
         with:
           api-key: ${{ secrets.REDROUTER_API_KEY }}
@@ -68,7 +68,9 @@ jobs:
           targets: "./,http://localhost:8080"
 ```
 
-Requires Docker and Go 1.24+; use disposable checkouts.
+Requires Docker, Go 1.24+ and disposable checkouts.
+
+Set test-account variables as `env` on the Action step from repository secrets; scope holds variable names only.
 
 | Input | Default / choices |
 | --- | --- |
@@ -90,19 +92,21 @@ Requires Docker and Go 1.24+; use disposable checkouts.
 | `slack-webhook` | None |
 | `dry-run` | `false` |
 
-Preflight checks scope, status, window, targets, exclusions, API-spec servers and catalog prices. Rate/concurrency limits are instructions. Budget wind-down at 90% is marked incomplete. Public comments/Slack omit details; see SARIF and seven-day artifacts. SARIF requires code scanning; upload failures are non-fatal.
+Preflight checks scope, exclusions, API-spec servers and prices. Rate/concurrency limits are instructions. Public comments/Slack omit details; artifacts expire after seven days.
 
 Outputs: `exit-code` (0 completed/skipped/dry-run, 1 error/refusal, 2 findings), `skipped`, `refusal`, `sarif-path`, `findings-high`, `findings-total`, `estimated-spend-usd`.
 
-Dry runs redact secrets. Dependencies: `uv==0.12.18`, `PyYAML==6.0.3`.
+2026-11-15, GitHub-hosted `ubuntu-latest`, Strix 1.7.1, `red-cyber-1`: private repository, code only, $0.83 of $0.90, about 13 minutes; repository plus a web app started on the runner, $0.97 of $1.00, about 13 minutes, workflow written by a coding agent from the setup prompt.
+Both reached budget-cap wind-down; no findings at or above high, both incomplete.
+Mock-model tests verified fail-on-high exit 2 and the egress guard.
 
-Tested 2026-11-15 on GitHub-hosted `ubuntu-latest`: Strix 1.7.1, `red-cyber-1`; comment, summary and artifact delivered; private-repository SARIF refused without code security.
+SARIF uploads were refused on private repositories without code scanning; the self-test uploads once public. Upload failures are non-fatal.
 
 ## Egress guard
 
 Opt-in `egress-guard: on` enforces sandbox network scope; startup/unsupported scopes fail closed. Requires Docker 28+. HTTPS path scopes are refused. Runner processes, model requests and clones are outside this boundary. Interception-proxy tools, raw sockets, nmap, sudo and package installs are unavailable. Decisions: artifact `egress-guard.jsonl`.
 
-Guard tested 2026-11-15 with local mocks: Docker Desktop/macOS (4.92.0, Engine 29.8.0, arm64) and GitHub-hosted Ubuntu 26.04/Docker 29.4.2 (amd64).
+Guard mock-tested 2026-11-15: macOS/arm64 (Docker 29.8.0) and hosted Ubuntu 26.04/amd64 (Docker 29.4.2).
 
 ## Privacy
 
@@ -110,7 +114,7 @@ RedRouter never clones your repository. The engine sends code snippets and tool 
 
 ## Funded first run
 
-The free trial is five generations, which is not enough for a scan. Early users can get credit for a first run: contact support@redrouter.org.
+Five free generations cannot fund a scan. For first-run credit, contact support@redrouter.org.
 
 ## Third-party engine
 
@@ -127,4 +131,4 @@ uv pip install PyYAML==6.0.3
 ./demo.sh --guard
 ```
 
-Default: localhost, Docker-free; run on 2026-11-15. Real modes may download dependencies.
+Default demo: localhost, Docker-free. Real modes download dependencies.
