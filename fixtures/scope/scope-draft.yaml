@@ -1,0 +1,33 @@
+schema: redrouter.scope/v1
+status: draft
+engagement:
+  name: Acme staging
+  type: own-app-ci
+in_scope:
+- type: repository
+  value: acme/shop
+- type: url
+  value: http://localhost:8080
+out_of_scope:
+- type: domain
+  value: '*.acme.com'
+  note: Production
+- type: text
+  value: Third-party services the app calls (payments, email, identity providers)
+- type: text
+  value: URLs found in source, config or responses that are not listed in scope
+techniques:
+  prohibited:
+  - denial-of-service
+  - data-alteration
+  - social-engineering
+  - pivoting
+limits:
+  requests_per_second: 10
+  concurrency: 5
+  max_budget_usd: 3
+  max_turns: 150
+test_accounts:
+- label: ci user
+  username_env: SCAN_TEST_USER
+  password_env: SCAN_TEST_PASSWORD

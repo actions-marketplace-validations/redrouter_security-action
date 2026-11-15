@@ -1,0 +1,9 @@
+RedRouter Security Action
+Copyright 2026 RedRouter
+
+This Action uses Strix as its third-party scanning engine:
+https://github.com/usestrix/strix
+Strix 1.7.1, commit 685bbc8138d35fc9fe378ac37ec0d9198b9c46a3
+Copyright 2025 OmniSecure Inc.
+Licensed under the Apache License, Version 2.0.
+The engine is fetched separately; its source is not bundled in this Action.

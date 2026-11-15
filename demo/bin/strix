@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Deliberately scripted engine, matching the pinned CLI and output layout."""
+import argparse
+import json
+import os
+from pathlib import Path
+import sys
+import urllib.request
+from urllib.parse import urlsplit
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-n", action="store_true", required=True)
+parser.add_argument("-t", "--target", action="append", required=True)
+parser.add_argument("--scan-mode", choices=("quick", "standard", "deep"), required=True)
+parser.add_argument("--scope-mode", choices=("auto", "diff", "full"), default="auto")
+parser.add_argument("--fail-on", choices=("critical", "high", "medium", "low", "info"), required=True)
+parser.add_argument("--max-budget", type=float, required=True)
+parser.add_argument("--max-turns", type=int, required=True)
+parser.add_argument("--instruction-file", type=Path, required=True)
+args = parser.parse_args()
+base = os.environ["LLM_API_BASE"]
+assert urlsplit(base).hostname in ("localhost", "127.0.0.1", "::1")
+assert args.instruction_file.read_text().startswith("Scope for this run (")
+for name in ("STRIX_LLM", "LLM_API_KEY", "STRIX_API_TYPE", "STRIX_REASONING_EFFORT", "STRIX_MAX_CONTEXT_IMAGES", "STRIX_TELEMETRY", "STRIX_IMAGE", "STRIX_LLM_INPUT_COST_PER_MTOK", "STRIX_LLM_CACHED_INPUT_COST_PER_MTOK", "STRIX_LLM_OUTPUT_COST_PER_MTOK"):
+    assert name in os.environ, name
+code = int(os.environ.get("REDROUTER_STUB_EXIT", "0" if args.fail_on == "critical" else "2"))
+messages = [{"role": "user", "content": args.instruction_file.read_text()}]
+tools = [{"type": "function", "function": {"name": name, "parameters": {"type": "object"}}} for name in ("demo_read_source", "demo_report")]
+calls = 0
+for _ in range(min(args.max_turns, 3)):
+    if calls * 0.000065 >= args.max_budget:
+        break
+    request = urllib.request.Request(base + "/chat/completions", data=json.dumps({"model": os.environ["STRIX_LLM"].removeprefix("openai/"), "messages": messages, "tools": tools}).encode(), headers={"Content-Type": "application/json", "Authorization": "Bearer " + os.environ["LLM_API_KEY"]})
+    with urllib.request.urlopen(request, timeout=5) as response:
+        message = json.load(response)["choices"][0]["message"]
+    calls += 1
+    messages.append(message)
+    for tool in message.get("tool_calls", []):
+        messages.append({"role": "tool", "tool_call_id": tool["id"], "name": tool["function"]["name"], "content": "Seeded fixture result; no external target accessed."})
+    if not message.get("tool_calls"):
+        break
+run = Path("strix_runs/sample-app-local")
+run.mkdir(parents=True)
+findings = [] if code in (0, 1) else [
+    {"id": "demo-001", "title": "SQL injection in record lookup", "severity": "high", "cwe": "CWE-89", "line": 15, "score": "8.1", "description": "The id query parameter is concatenated into SQL. Use a bound parameter."},
+    {"id": "demo-002", "title": "Path traversal in file download", "severity": "medium", "cwe": "CWE-22", "line": 20, "score": "5.3", "description": "The download path accepts parent components. Resolve it and require containment."},
+]
+sarif = {"version": "2.1.0", "$schema": "https://json.schemastore.org/sarif-2.1.0.json", "runs": [{"tool": {"driver": {"name": "Strix", "version": "1.7.1", "informationUri": "https://github.com/usestrix/strix", "rules": [{"id": f["cwe"], "shortDescription": {"text": f["title"]}, "properties": {"security-severity": f["score"]}} for f in findings]}}, "results": [{"ruleId": f["cwe"], "kind": "fail", "level": "error" if f["severity"] == "high" else "warning", "message": {"text": f["description"]}, "locations": [{"physicalLocation": {"artifactLocation": {"uri": "sample-app/app.py"}, "region": {"startLine": f["line"]}}}], "properties": {"strix": {"severity": f["severity"], "id": f["id"]}}} for f in findings]}]}
+(run / "findings.sarif").write_text(json.dumps(sarif, indent=2) + "\n")
+(run / "vulnerabilities.json").write_text(json.dumps(findings, indent=2) + "\n")
+(run / "run.json").write_text(json.dumps({"status": "failed" if code == 1 else "completed", "llm_usage": {"cost": round(calls * 0.000065, 9)}, "demo": "scripted; not an autonomous scan"}) + "\n")
+(run / "report.md").write_text("Scripted local demo.\n\n" + "\n".join(f["title"] + ": " + f["description"] for f in findings) + "\n")
+sys.exit(code)

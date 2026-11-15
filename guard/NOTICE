@@ -1,0 +1,5 @@
+The guard is original RedRouter code. Its integration documentation refers to
+Strix, an Apache-2.0 licensed third-party engine, at commit
+685bbc8138d35fc9fe378ac37ec0d9198b9c46a3.
+Source and license: https://github.com/usestrix/strix
+No engine source is distributed in this directory.

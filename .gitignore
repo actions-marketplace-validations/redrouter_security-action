@@ -1,0 +1,9 @@
+.cache/
+.venv/
+__pycache__/
+*.pyc
+demo-out/
+.redrouter-results/
+strix_runs/
+out/
+.DS_Store

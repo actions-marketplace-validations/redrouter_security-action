@@ -1,0 +1,142 @@
+name: RedRouter Security Action
+description: Scoped security scans on every pull request.
+inputs:
+  api-key:
+    description: RedRouter API key
+    required: true
+  model:
+    description: Exact model ID from the public catalog
+    required: true
+  scope:
+    description: Committed redrouter.scope/v1 file
+    default: .github/scope.yaml
+  targets:
+    description: Newline or comma separated targets
+    default: ./
+  api-base:
+    description: OpenAI-compatible RedRouter API base
+    default: https://redrouter.org/v1
+  scan-mode:
+    description: quick, standard or deep
+    default: quick
+  scope-mode:
+    description: auto, diff or full; auto scans the pull request diff when there is one
+    default: auto
+  fail-on:
+    description: critical, high, medium, low or info
+    default: high
+  max-budget:
+    description: Maximum estimated model spend in USD
+    default: '3'
+  max-turns:
+    description: Maximum turns per engine agent
+    default: '150'
+  engine:
+    description: Scanning engine
+    default: strix
+  engine-ref:
+    description: Immutable engine Git commit
+    default: 685bbc8138d35fc9fe378ac37ec0d9198b9c46a3
+  egress-guard:
+    description: on or off; route sandbox traffic through the scope proxy (experimental)
+    default: 'off'
+  upload-sarif:
+    description: auto, true or false; upload is always non-fatal
+    default: auto
+  comment:
+    description: Post or update the sticky PR comment
+    default: 'true'
+  slack-webhook:
+    description: Optional Slack incoming webhook URL
+    default: ''
+  dry-run:
+    description: Preflight and print the redacted command without installing or running the engine
+    default: 'false'
+outputs:
+  exit-code:
+    description: 0 clean or skipped, 1 error or refusal, 2 threshold findings
+    value: ${{ steps.scan.outputs.exit-code }}
+  skipped:
+    description: Whether a fork pull request was skipped
+    value: ${{ steps.scan.outputs.skipped }}
+  refusal:
+    description: Refusal code, or empty
+    value: ${{ steps.scan.outputs.refusal }}
+  sarif-path:
+    description: Absolute path to this run's SARIF, or empty
+    value: ${{ steps.scan.outputs.sarif-path }}
+  findings-high:
+    description: High severity count (critical is separate)
+    value: ${{ steps.scan.outputs.findings-high }}
+  findings-total:
+    description: Total finding count, excluding coverage entries
+    value: ${{ steps.scan.outputs.findings-total }}
+  estimated-spend-usd:
+    description: Engine run.json llm_usage.cost; empty when not reported
+    value: ${{ steps.scan.outputs.estimated-spend-usd }}
+runs:
+  using: composite
+  steps:
+    - id: scan
+      shell: bash
+      continue-on-error: true
+      env:
+        PYTHONPATH: ${{ github.action_path }}
+        REDROUTER_ACTION_PATH: ${{ github.action_path }}
+        REDROUTER_RESULTS_DIR: ${{ runner.temp }}/redrouter-results
+        GITHUB_TOKEN: ${{ github.token }}
+        INPUT_API_KEY: ${{ inputs.api-key }}
+        INPUT_MODEL: ${{ inputs.model }}
+        INPUT_SCOPE: ${{ inputs.scope }}
+        INPUT_TARGETS: ${{ inputs.targets }}
+        INPUT_API_BASE: ${{ inputs.api-base }}
+        INPUT_SCAN_MODE: ${{ inputs.scan-mode }}
+        INPUT_SCOPE_MODE: ${{ inputs.scope-mode }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_MAX_BUDGET: ${{ inputs.max-budget }}
+        INPUT_MAX_TURNS: ${{ inputs.max-turns }}
+        INPUT_ENGINE: ${{ inputs.engine }}
+        INPUT_ENGINE_REF: ${{ inputs.engine-ref }}
+        INPUT_EGRESS_GUARD: ${{ inputs.egress-guard }}
+        INPUT_UPLOAD_SARIF: ${{ inputs.upload-sarif }}
+        INPUT_COMMENT: ${{ inputs.comment }}
+        INPUT_SLACK_WEBHOOK: ${{ inputs.slack-webhook }}
+        INPUT_DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        cd "$REDROUTER_ACTION_PATH"
+        tools_dir="$(mktemp -d "$RUNNER_TEMP/redrouter-tools.XXXXXX")"
+        trap 'printf "**Error: Action dependency setup failed.**\n" >> "$GITHUB_STEP_SUMMARY"; printf "exit-code=1\n" >> "$GITHUB_OUTPUT"' ERR
+        python3 -m venv "$tools_dir"
+        "$tools_dir/bin/python" -m pip --disable-pip-version-check install --quiet 'uv==0.12.18' 'PyYAML==6.0.3'
+        export PATH="$tools_dir/bin:$PATH"
+        trap - ERR
+        "$tools_dir/bin/python" -m redrouter.main
+    - name: Stop egress guard
+      if: always() && steps.scan.outputs.guard-manifest != ''
+      shell: bash
+      continue-on-error: true
+      env:
+        REDROUTER_ACTION_PATH: ${{ github.action_path }}
+        GUARD_MANIFEST: ${{ steps.scan.outputs.guard-manifest }}
+        GUARD_RUN_ID: ${{ steps.scan.outputs.guard-run-id }}
+        GUARD_ARTIFACT: ${{ steps.scan.outputs.artifact-path }}
+      run: python3 "$REDROUTER_ACTION_PATH/redrouter/egress.py" "$GUARD_MANIFEST" "$GUARD_RUN_ID" "$GUARD_ARTIFACT"
+    - name: Keep scan details
+      if: always() && steps.scan.outputs.artifact-path != ''
+      continue-on-error: true
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: redrouter-security-${{ github.run_id }}-${{ github.run_attempt }}
+        path: ${{ steps.scan.outputs.artifact-path }}
+        retention-days: 7
+        if-no-files-found: ignore
+    - name: Return scan exit code
+      if: always()
+      shell: bash
+      env:
+        SCAN_EXIT_CODE: ${{ steps.scan.outputs.exit-code }}
+      run: |
+        case "$SCAN_EXIT_CODE" in
+          0|1|2) exit "$SCAN_EXIT_CODE" ;;
+          *) exit 1 ;;
+        esac
