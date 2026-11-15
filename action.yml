@@ -1,5 +1,8 @@
 name: RedRouter Security Action
 description: Scoped security scans on every pull request.
+branding:
+  icon: shield
+  color: red
 inputs:
   api-key:
     description: RedRouter API key
