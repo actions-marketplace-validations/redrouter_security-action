@@ -57,10 +57,11 @@ class Strix:
         for key in ("PATH", "LANG", "TMPDIR", "DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_CONFIG", "UV_CACHE_DIR", "UV_PYTHON_INSTALL_DIR", "GITHUB_ACTIONS", "GITHUB_BASE_REF", "GITHUB_HEAD_REF", "GITHUB_REPOSITORY", "GITHUB_SHA", "GITHUB_REF", "CI"):
             if key in os.environ:
                 env[key] = os.environ[key]
+        reserved = set(env)
         for account in self.scope.data.get("test_accounts", []):
             for key in ("username_env", "password_env"):
                 name = account[key]
-                if name in env or name.startswith(("STRIX_", "LLM_", "OPENAI_", "GITHUB_", "PYTHON", "LD_", "DYLD_", "UV_")) or name in ("HOME", "PATH"):
+                if name in reserved or name.startswith(("STRIX_", "LLM_", "OPENAI_", "GITHUB_", "PYTHON", "LD_", "DYLD_", "UV_")) or name in ("HOME", "PATH"):
                     raise ValueError("Test account variable collides with engine configuration")
                 if name in os.environ:
                     env[name] = os.environ[name]

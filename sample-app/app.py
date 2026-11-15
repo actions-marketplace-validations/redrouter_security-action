@@ -1,4 +1,5 @@
 """Deliberately vulnerable local fixture. Do not deploy."""
+import os
 import sqlite3
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -26,4 +27,4 @@ class App(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    HTTPServer(("127.0.0.1", 8080), App).serve_forever()
+    HTTPServer((os.environ.get("HOST", "127.0.0.1"), 8080), App).serve_forever()

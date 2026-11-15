@@ -96,7 +96,7 @@ Preflight checks scope, exclusions, API-spec servers and prices. Rate/concurrenc
 
 Outputs: `exit-code` (0 completed/skipped/dry-run, 1 error/refusal, 2 findings), `skipped`, `refusal`, `sarif-path`, `findings-high`, `findings-total`, `estimated-spend-usd`.
 
-2026-11-15, GitHub-hosted `ubuntu-latest`, Strix 1.7.1, `red-cyber-1`: private repository, code only, $0.83 of $0.90, about 13 minutes; repository plus a web app started on the runner, $0.97 of $1.00, about 13 minutes, workflow written by a coding agent from the setup prompt.
+2026-11-15, GitHub-hosted `ubuntu-latest`, Strix 1.7.1, `red-cyber-1`: private repository, code only, $0.83 of $0.90, about 13 minutes; repository plus a web app started on the runner, $0.97 of $1.00, about 13 minutes, workflow written by a coding agent from the setup prompt, budget cap lowered by hand to $1.
 Both reached budget-cap wind-down; no findings at or above high, both incomplete.
 Mock-model tests verified fail-on-high exit 2 and the egress guard.
 
