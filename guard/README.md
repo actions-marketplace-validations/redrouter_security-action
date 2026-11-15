@@ -1,6 +1,6 @@
 # RedRouter egress guard
 
-Requires Python 3 and Docker Engine 28+ (checked).
+Requires Python 3 and Docker Engine 28+.
 
 ```sh
 guard/up scope.json guard.jsonl https://model.example:443 > connection.json

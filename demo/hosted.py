@@ -36,7 +36,7 @@ def serve(directory, guarded):
             url = "'http://host.docker.internal:8080/lookup?id=0%20OR%201=1'"
             command = "curl --fail-with-body -sS --retry 12 --retry-connrefused --retry-delay 1 --retry-max-time 15 --max-time 3 " + url
             if not guarded:
-                # Try the runner alias directly if the bundled interception proxy cannot resolve it.
+                # Try the runner alias directly if the bundled interception proxy is not ready.
                 command += " || curl -fsS --noproxy host.docker.internal --max-time 10 " + url
             mock.guard_commands = [command]
             if guarded:
