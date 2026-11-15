@@ -32,7 +32,8 @@ def serve(directory, guarded):
         threading.Thread(target=instance.serve_forever, daemon=True).start()
     try:
         with server(directory) as mock:
-            command = "curl -fsS --max-time 15 'http://host.docker.internal:8080/lookup?id=0%20OR%201=1'"
+            # The bundled proxy starts asynchronously; a scripted model can outrun it.
+            command = "curl -fsS --retry 12 --retry-connrefused --retry-delay 1 --retry-max-time 15 --max-time 3 'http://host.docker.internal:8080/lookup?id=0%20OR%201=1'"
             mock.guard_commands = [command]
             if guarded:
                 mock.guard_commands.append("curl -sS --max-time 8 -w '\\nHTTP=%{http_code}\\n' http://host.docker.internal:8081/lookup?id=1")

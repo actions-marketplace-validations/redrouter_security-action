@@ -61,7 +61,7 @@ Tested 2026-11-15 on GitHub-hosted `ubuntu-latest`: Strix 1.7.1, `red-cyber-1`; 
 
 Opt-in `egress-guard: on` enforces sandbox network scope through an HTTP/HTTPS/DNS proxy; startup or unsupported scopes fail closed. Requires Docker Engine 28+. HTTPS path scopes are refused. The runner process, model requests and clones are outside this boundary. Interception-proxy tools, raw sockets, nmap, sudo and package installs are unavailable. Linux targets need a `0.0.0.0` bind or published port; the sandbox uses `host.docker.internal`. Decisions: artifact `egress-guard.jsonl`.
 
-Guard tested 2026-11-15 against a local mock on Docker Desktop/macOS (4.92.0, Engine 29.8.0, arm64); not yet GitHub-hosted.
+Guard tested 2026-11-15 with local mocks: Docker Desktop/macOS (4.92.0, Engine 29.8.0, arm64) and GitHub-hosted Ubuntu 26.04/Docker 29.4.2 (amd64).
 
 ## Privacy
 

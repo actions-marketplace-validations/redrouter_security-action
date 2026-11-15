@@ -31,3 +31,6 @@ jobs:
         run: python3 -m demo.hosted verify --directory "$RUNNER_TEMP/mock" --exit-code "$SCAN_EXIT" --sarif "$SARIF"
       - if: always()
         run: python3 -m demo.hosted stop --directory "$RUNNER_TEMP/mock"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: mock-evidence, path: '${{ runner.temp }}/mock', retention-days: 7}
