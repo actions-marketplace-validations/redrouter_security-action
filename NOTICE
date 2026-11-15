@@ -4,6 +4,7 @@ Copyright 2026 RedRouter
 This Action uses Strix as its third-party scanning engine:
 https://github.com/usestrix/strix
 Strix 1.7.1, commit 685bbc8138d35fc9fe378ac37ec0d9198b9c46a3
+Sandbox: ghcr.io/usestrix/strix-sandbox@sha256:c8e70302ba4a69b678b4001c909b134d8d0b84625d7b23feed59ece02672c1d2
 Copyright 2025 OmniSecure Inc.
 Licensed under the Apache License, Version 2.0.
 The engine is fetched separately; its source is not bundled in this Action.
