@@ -19,6 +19,7 @@ class MockServer(ThreadingHTTPServer):
         self.comments = []
         self.catalog_failure = False
         self.guard_commands = []
+        self.finding = None
         self.lock = threading.Lock()
 
     @property
@@ -93,6 +94,9 @@ class Handler(BaseHTTPRequestHandler):
         call = None
         if self.server.guard_commands and "exec_command" in tools:
             call = ("exec_command", {"cmd": self.server.guard_commands.pop(0), "yield_time_ms": 20000})
+        elif self.server.finding and "create_vulnerability_report" in tools:
+            call = ("create_vulnerability_report", self.server.finding)
+            self.server.finding = None
         elif "demo_read_source" in tools and "demo_read_source" not in previous:
             call = ("demo_read_source", {"path": "sample-app/app.py"})
         elif "demo_report" in tools and "demo_report" not in previous:

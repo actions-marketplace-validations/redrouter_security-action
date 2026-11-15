@@ -1,0 +1,33 @@
+name: Self-test
+on:
+  pull_request:
+  push: {branches: [main]}
+  workflow_dispatch:
+permissions: {contents: read, pull-requests: write, security-events: write, actions: read}
+jobs:
+  scan:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, persist-credentials: false}
+      - run: python3 -m demo.hosted start --directory "$RUNNER_TEMP/mock"
+      - uses: ./
+        id: scan
+        continue-on-error: true
+        with:
+          api-key: local-mock-only
+          model: demo-model
+          api-base: ${{ env.MOCK_API_BASE }}
+          targets: "./sample-app,http://localhost:8080"
+          scope-mode: full
+          fail-on: critical
+          max-budget: '0.1'
+          max-turns: '10'
+          upload-sarif: 'true'
+      - if: always()
+        env: {SCAN_EXIT: '${{ steps.scan.outputs.exit-code }}', SARIF: '${{ steps.scan.outputs.sarif-path }}'}
+        run: python3 -m demo.hosted verify --directory "$RUNNER_TEMP/mock" --exit-code "$SCAN_EXIT" --sarif "$SARIF"
+      - if: always()
+        run: python3 -m demo.hosted stop --directory "$RUNNER_TEMP/mock"

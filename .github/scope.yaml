@@ -1,0 +1,13 @@
+schema: redrouter.scope/v1
+status: active
+engagement:
+  name: Local self-test
+  type: own-app-ci
+in_scope:
+  - type: repository
+    value: redrouter/security-action
+  - type: url
+    value: http://localhost:8080
+limits:
+  max_budget_usd: 0.1
+  max_turns: 10
